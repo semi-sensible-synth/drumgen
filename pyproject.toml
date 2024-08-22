@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drumgen"
+version = "0.1.0"
+authors = [
+    { name = "Andrew Perry", email = "ajperry@pansapiens.com" },
+]
+description = "A drum pattern generator, based on Mutable Instrument's Grids"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/semi-sensible-synth/drumgen"
+"Bug Tracker" = "https://github.com/semi-sensible-synth/drumgen/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["drumgen*"]
+exclude = ["tests*"]

@@ -73,6 +73,8 @@ The API might change in the future as it is further Python-ized (eg, to allow be
 
 The [TulipCC](https://github.com/shorepine/tulipcc) is a neat little music computer platform that runs [MicroPython](https://micropython.org/).
 
+<img src="https://github.com/user-attachments/assets/da397185-c020-4ccb-9533-a9f34a989991" width="50%">
+
 The easiest way to run this as an app is to download `scripts/tulip/tworld_grids.py`.
 
 There's a version on *Tulip ~ World* - on your TulipCC run:

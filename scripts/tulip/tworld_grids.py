@@ -488,11 +488,11 @@ class GridsGUI(UIElement):
         lv_depad(self.group)
 
         self._create_sliders()
-        self._create_mode_switch()
+        #self._create_mode_switch()
 
     def _create_sliders(self):
         slider_configs = [
-            ("Tempo", 30, 240, self._tempo_cb),
+            ("Tempo", 30, 250, self._tempo_cb),
             ("X", 0, 255, self._x_cb),
             ("Y", 0, 255, self._y_cb),
             ("Fill BD", 0, 255, lambda e: self._fill_cb(e, 0)),
@@ -504,16 +504,16 @@ class GridsGUI(UIElement):
         for i, (name, min_val, max_val, callback) in enumerate(slider_configs):
             slider = lv.slider(self.group)
             slider.set_style_bg_opa(lv.OPA.COVER, lv.PART.MAIN)
-            slider.set_width(300)
+            slider.set_width(260)
             slider.set_style_bg_color(pal_to_lv(255), lv.PART.INDICATOR)
             slider.set_style_bg_color(pal_to_lv(255), lv.PART.MAIN)
             slider.set_style_bg_color(pal_to_lv(129), lv.PART.KNOB)
             slider.set_range(min_val, max_val)
-            slider.align(lv.ALIGN.TOP_LEFT, 20, 20 + i * 60)
+            slider.align(lv.ALIGN.TOP_LEFT, 80, 40 + i * 60)  # Moved 20px right and 20px down
             slider.add_event_cb(callback, lv.EVENT.VALUE_CHANGED, None)
 
             label = lv.label(self.group)
-            label.set_text(f"{name}: {min_val}")
+            label.set_text(f"{name}")
             label.align_to(slider, lv.ALIGN.OUT_TOP_LEFT, 0, -5)
 
             value_label = lv.label(self.group)
@@ -522,6 +522,29 @@ class GridsGUI(UIElement):
             setattr(self, f"{name.lower().replace(' ', '_')}_slider", slider)
             setattr(self, f"{name.lower().replace(' ', '_')}_label", label)
             setattr(self, f"{name.lower().replace(' ', '_')}_value", value_label)
+
+            # Add + and - buttons for Tempo slider
+            if name == "Tempo":
+                minus_btn = lv.button(self.group)
+                minus_btn.set_size(60, 60)  # Increased button size
+                minus_btn.align_to(slider, lv.ALIGN.OUT_LEFT_MID, -10, 0)
+                minus_btn.add_event_cb(self._tempo_minus_cb, lv.EVENT.CLICKED, None)
+                minus_btn.set_style_bg_color(pal_to_lv(200), 0)
+                minus_label = lv.label(minus_btn)
+                minus_label.set_text("-")
+                minus_label.center()
+
+                plus_btn = lv.button(self.group)
+                plus_btn.set_size(60, 60)  # Increased button size
+                plus_btn.align_to(slider, lv.ALIGN.OUT_RIGHT_MID, 10, 0)
+                plus_btn.add_event_cb(self._tempo_plus_cb, lv.EVENT.CLICKED, None)
+                plus_btn.set_style_bg_color(pal_to_lv(200), 0)
+                plus_label = lv.label(plus_btn)
+                plus_label.set_text("+")
+                plus_label.center()
+
+                # Adjust value label position
+                value_label.align_to(plus_btn, lv.ALIGN.OUT_RIGHT_MID, 10, 0)
 
         # Set initial values without animation
         self.tempo_slider.set_value(120, lv.ANIM.OFF)
@@ -596,6 +619,96 @@ class GridsGUI(UIElement):
             self.mode_label.set_text("Grids")
             self.grids.pattern_generator.output_mode = "grids"
 
+    def _tempo_minus_cb(self, e):
+        current_value = self.tempo_slider.get_value()
+        new_value = max(self.tempo_slider.get_min_value(), current_value - 1)
+        self.tempo_slider.set_value(new_value, lv.ANIM.OFF)
+        self._tempo_cb(None)
+
+    def _tempo_plus_cb(self, e):
+        current_value = self.tempo_slider.get_value()
+        new_value = min(self.tempo_slider.get_max_value(), current_value + 1)
+        self.tempo_slider.set_value(new_value, lv.ANIM.OFF)
+        self._tempo_cb(None)
+
+
+class PatternSelect(UIElement):
+    def __init__(self, grids_instance):
+        super().__init__()
+        self.grids = grids_instance
+        self.group.set_size(700, 100)
+        self.group.set_style_bg_color(pal_to_lv(9), 0)
+        lv_depad(self.group)
+
+        self.patterns = [{} for _ in range(8)]
+        self.buttons = []
+        self.active_button = 0
+        self._create_buttons()
+
+    def _create_buttons(self):
+        for i in range(8):
+            btn = lv.button(self.group)
+            btn.set_size(60, 60)
+            btn.align(lv.ALIGN.TOP_LEFT, 10 + i * 80, 20)
+            btn.set_style_bg_color(pal_to_lv(255), lv.PART.MAIN)
+            btn.add_event_cb(lambda e, idx=i: self._pattern_cb(idx), lv.EVENT.CLICKED, None)
+
+            label = lv.label(btn)
+            label.set_text(str(i + 1))
+            label.center()
+
+            self.buttons.append(btn)
+
+        # Set initial active button
+        self._set_active_button(0)
+
+    def _set_active_button(self, idx):
+        # Reset all buttons to inactive state
+        for btn in self.buttons:
+            btn.set_style_bg_color(pal_to_lv(255), lv.PART.MAIN)
+
+        # Set the selected button to active state
+        self.buttons[idx].set_style_bg_color(pal_to_lv(129), lv.PART.MAIN)
+        self.active_button = idx
+
+    def _update_pattern(self, idx):
+        self.patterns[idx] = {
+            "tempo": self.grids.tempo_slider.get_value(),
+            "x": self.grids.x_slider.get_value(),
+            "y": self.grids.y_slider.get_value(),
+            "fill_bd": self.grids.fill_bd_slider.get_value(),
+            "fill_sd": self.grids.fill_sd_slider.get_value(),
+            "fill_hh": self.grids.fill_hh_slider.get_value(),
+            "chaos": self.grids.chaos_slider.get_value(),
+        }
+
+    def _pattern_cb(self, idx):
+        if idx == self.active_button:
+            self._update_pattern(idx)
+            return
+
+        self._set_active_button(idx)
+
+        if not self.patterns[idx]:
+            self._update_pattern(idx)
+
+        pattern = self.patterns[idx]
+        self.grids.tempo_slider.set_value(pattern["tempo"], lv.ANIM.OFF)
+        self.grids.x_slider.set_value(pattern["x"], lv.ANIM.OFF)
+        self.grids.y_slider.set_value(pattern["y"], lv.ANIM.OFF)
+        self.grids.fill_bd_slider.set_value(pattern["fill_bd"], lv.ANIM.OFF)
+        self.grids.fill_sd_slider.set_value(pattern["fill_sd"], lv.ANIM.OFF)
+        self.grids.fill_hh_slider.set_value(pattern["fill_hh"], lv.ANIM.OFF)
+        self.grids.chaos_slider.set_value(pattern["chaos"], lv.ANIM.OFF)
+
+        self.grids._tempo_cb(None)
+        self.grids._x_cb(None)
+        self.grids._y_cb(None)
+        self.grids._fill_cb(None, 0)
+        self.grids._fill_cb(None, 1)
+        self.grids._fill_cb(None, 2)
+        self.grids._chaos_cb(None)
+
 
 def run(screen):
     screen.set_bg_color(0)
@@ -603,9 +716,10 @@ def run(screen):
     screen.offset_x = 50
 
     grids = TulipGrids()
-    gui = GridsGUI(grids)
-    screen.add(gui, x=screen.offset_x, y=screen.offset_y)
-
+    sliders = GridsGUI(grids)
+    pattern_select = PatternSelect(sliders)
+    screen.add(sliders, x=screen.offset_x, y=screen.offset_y)
+    screen.add(pattern_select, x=screen.offset_x, y=screen.offset_y + 450)
     screen.present()
     grids.start()
 

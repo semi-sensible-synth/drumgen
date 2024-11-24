@@ -1,4 +1,4 @@
-#fmt: off
+# fmt: off
 
 # Copyright 2012 Emilie Gillet, 2024 Andrew Perry
 #
@@ -28,7 +28,7 @@
 # .. or ..
 #
 # from tworld_grids import TulipGrids
-# grids = TulipGrids()  # or TulipGrids(use_internal_drums=True)
+# grids = TulipGrids()
 # grids.start()
 # 
 # grids.set_x(128)
@@ -387,17 +387,20 @@ def get_euclidean_pattern(steps, pulses):
 
 
 class TulipGrids:
-    def __init__(self, use_internal_drums=True):
+    def __init__(self):
         self.pattern_generator = PatternGenerator()
         self.mode = "grids"
         self.seq_slot = None
-        self.use_internal_drums = use_internal_drums
 
-        if use_internal_drums:
-            self.synth = midi.config.synth_per_channel[10]
-        else:
-            self.synth = midi.Synth(3)  # 3-voice polyphony for drums
-            self.synth.program_change(128)  # Set to GM drums
+        # Set up MIDI channel 10 for drums
+        self.synth = midi.config.synth_per_channel[10]
+        
+        # Map drum sounds to MIDI notes
+        self.drum_notes = {
+            0: 36,  # Bass drum (MIDI note 36)
+            1: 38,  # Snare drum (MIDI note 38) 
+            2: 42,  # Closed hi-hat (MIDI note 42)
+        }
 
         self.drum_presets = [1, 2, 0]  # Default presets for BD, SD, HH
         self.velocities = array("f", [0.5, 0.5, 0.5])
@@ -426,27 +429,29 @@ class TulipGrids:
         self.mode = "euclidean"
         self.pattern_generator.output_mode = "euclidean"
 
-    def _sequencer_callback(self, time):
+    def _sequencer_callback(self, t):
         if self.mode == "grids":
             state = self.pattern_generator.evaluate()
         else:  # Euclidean mode
             state = self.pattern_generator.evaluate_euclidean()
 
+        # For each drum channel that should trigger
         for i in range(3):
             if state & (1 << i):
-                if self.use_internal_drums:
-                    base_note = drumkit[self.drum_presets[i]][0]
-                    note_for_pitch = int(base_note + (self.pitches[i] - 0.5) * 24.0)
-                    self.synth.note_on(
-                        note_for_pitch,
-                        self.velocities[i] * 2,
-                        pcm_patch=self.drum_presets[i],
-                        pan=self.pans[i],
-                        time=time,
-                    )
-                else:
-                    note = [36, 38, 42][i]  # Bass drum, Snare drum, Closed hi-hat
-                    self.synth.note_on(note, int(self.velocities[i] * 127), time=time)
+                # Get the MIDI note for this drum
+                note = self.drum_notes[i]
+                
+                # Get velocity and other parameters
+                velocity = self.velocities[i]
+                pitch = self.pitches[i] 
+                pan = self.pans[i]
+                
+                # Play the note using MIDI channel 10
+                self.synth.note_on(
+                    note=note,
+                    velocity=velocity * 2,  # Scale velocity 0-1 to 0-2
+                    time=t
+                )
 
         self.pattern_generator.tick_clock()
 
